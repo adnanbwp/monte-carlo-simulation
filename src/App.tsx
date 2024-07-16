@@ -99,7 +99,7 @@ function App() {
       reader.onload = (e) => {
         const text = e.target?.result as string;
         const lines = text.split('\n');
-        const headers = lines[0].split(',');
+        // const headers = lines[0].split(',');
         const newFeatures: Feature[] = lines.slice(1).map((line, index) => {
           const values = line.split(',');
           return {
