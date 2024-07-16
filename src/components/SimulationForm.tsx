@@ -68,6 +68,7 @@ const SimulationForm: React.FC<SimulationFormProps> = ({
         placeholder="WIP Limit"
         min="1"
       />
+      <br/>
       <input
         type="text"
         value={featureName}

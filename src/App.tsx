@@ -43,7 +43,9 @@ function App() {
   const handleRemoveFeature = (featureId: string) => {
     setFeatures(prevFeatures => {
       const featureToRemove = prevFeatures.find(f => f.id === featureId);
-      if (!featureToRemove) return prevFeatures;
+      if (!featureToRemove) {
+        return prevFeatures;
+      }
 
       return prevFeatures
         .filter(feature => feature.id !== featureId)
@@ -146,10 +148,16 @@ function App() {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2"
         >
           Upload CSV
         </button>
+        <button
+          onClick={handleSimulate}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded  mt-4"
+        >
+          Run Simulation
+        </button>        
       </div>
       <SimulationForm
         dueDate={dueDate}
