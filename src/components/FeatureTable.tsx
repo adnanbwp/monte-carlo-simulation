@@ -46,7 +46,7 @@ const FeatureTable: React.FC<FeatureTableProps> = ({ features, onEditFeature, on
         <tr>
           <th className="border p-2">Priority</th>
           <th className="border p-2">Name</th>
-          <th className="border p-2">Feature Size</th>
+          <th className="border p-2">Size</th>
           <th className="border p-2">Probability</th>
           <th className="border p-2">Expected Date
             <br/> 85% Confidence</th>
