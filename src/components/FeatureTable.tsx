@@ -38,6 +38,14 @@ const FeatureTable: React.FC<FeatureTableProps> = ({ features, onEditFeature, on
     setEditingId(null);
   };
 
+  const getRowColor = (probability?: number) => {
+
+    if (probability === undefined) return '';
+    if (probability >= 85) return 'bg-green-200';
+    if (probability >= 75) return 'bg-yellow-200';
+    return 'bg-red-200';
+  };
+
   const sortedFeatures = [...features].sort((a, b) => a.priority - b.priority);
 
   return (
@@ -48,8 +56,7 @@ const FeatureTable: React.FC<FeatureTableProps> = ({ features, onEditFeature, on
           <th className="border p-2">Name</th>
           <th className="border p-2">Size</th>
           <th className="border p-2">Probability</th>
-          <th className="border p-2">Expected Date
-            <br/> 85% Confidence</th>
+          <th className="border p-2">Expected Date<br/>85% Confidence</th>
           <th className="border p-2">Actions</th>
         </tr>
       </thead>
@@ -57,7 +64,7 @@ const FeatureTable: React.FC<FeatureTableProps> = ({ features, onEditFeature, on
         {sortedFeatures.map((feature) => (
           <tr
             key={feature.id}
-            className={feature.probability && feature.probability > 85 ? 'bg-green-200' : 'bg-red-200'}
+            className={getRowColor(feature.probability)}
           >
             <td className="border p-2">
               {editingId === feature.id ? (

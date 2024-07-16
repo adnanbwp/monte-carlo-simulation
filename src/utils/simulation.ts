@@ -34,7 +34,9 @@ export const runSimulation = (features: Feature[], dueDate: string, pastThroughp
         nextFeatureIndex++;
       }
 
-      if (activeFeatures.length === 0) break; // No more work to do
+      if (activeFeatures.length === 0) {
+        break;
+      } // No more work to do
 
       const dailyThroughput = pastThroughput[Math.floor(Math.random() * pastThroughput.length)];
       
@@ -53,7 +55,9 @@ export const runSimulation = (features: Feature[], dueDate: string, pastThroughp
           const work = Math.min(feature.remainingSize, remainingThroughput);
           feature.remainingSize -= work;
           remainingThroughput -= work;
-          if (remainingThroughput === 0) break;
+          if (remainingThroughput === 0) {
+            break;
+          }
         }
       }
 
