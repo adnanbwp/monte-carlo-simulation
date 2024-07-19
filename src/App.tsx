@@ -1,185 +1,228 @@
-import React, { useState, useRef } from 'react';
-import SimulationForm from './components/SimulationForm';
-import FeatureTable from './components/FeatureTable';
+import React, { useState } from 'react';
+import TeamManager from './components/TeamManager';
+import TeamTabs from './components/TeamTabs';
+import SimulationResultsSummary from './components/SimulationResultsSummary';
+import HelpModal from './components/HelpModal';
+import CSVTemplate from './components/CSVTemplate';
 import { runSimulation } from './utils/simulation';
-import { addMonths, format } from 'date-fns';
-
-interface Feature {
-  id: string;
-  name: string;
-  size: number;
-  priority: number;
-  probability?: number;
-  expectedDate?: string;
-}
+import { Team, Feature } from './types';
+import { HelpCircle, PlayCircle } from 'lucide-react';
 
 function App() {
-  const [features, setFeatures] = useState<Feature[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [dueDate, setDueDate] = useState<string>('');
-  const [pastThroughput, setPastThroughput] = useState<number[]>([]);
-  const [wipLimit, setWipLimit] = useState<number>(1);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [simulationRun, setSimulationRun] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddFeature = (newFeature: Feature) => {
-    setFeatures(prevFeatures => {
-      const updatedFeatures = prevFeatures.map(feature => {
-        if (feature.priority >= newFeature.priority) {
-          return { ...feature, priority: feature.priority + 1 };
-        }
-        return feature;
-      });
-      return [...updatedFeatures, newFeature].sort((a, b) => a.priority - b.priority);
-    });
+  const handleAddTeam = (newTeam: Team) => {
+    setTeams([...teams, newTeam]);
   };
 
-  const handleEditFeature = (editedFeature: Feature) => {
-    setFeatures(prevFeatures => 
-      prevFeatures.map(feature => 
-        feature.id === editedFeature.id ? editedFeature : feature
-      ).sort((a, b) => a.priority - b.priority)
-    );
+  const handleUpdateTeam = (teamId: string, updatedTeam: Team) => {
+    setTeams(teams.map(team => team.id === teamId ? updatedTeam : team));
   };
 
-  const handleRemoveFeature = (featureId: string) => {
-    setFeatures(prevFeatures => {
-      const featureToRemove = prevFeatures.find(f => f.id === featureId);
-      if (!featureToRemove) {
-        return prevFeatures;
+  const handleRemoveTeam = (teamId: string) => {
+    setTeams(teams.filter(team => team.id !== teamId));
+  };
+
+  const handleAddFeature = (teamId: string, newFeature: Feature) => {
+    setTeams(teams.map(team => {
+      if (team.id === teamId) {
+        const updatedFeatures = [...team.features, newFeature].map((feature, index) => ({
+          ...feature,
+          priority: index + 1
+        }));
+        return {
+          ...team,
+          features: updatedFeatures
+        };
       }
-
-      return prevFeatures
-        .filter(feature => feature.id !== featureId)
-        .map(feature => {
-          if (feature.priority > featureToRemove.priority) {
-            return { ...feature, priority: feature.priority - 1 };
-          }
-          return feature;
-        });
-    });
+      return team;
+    }));
   };
+
+  const handleEditFeature = (teamId: string, editedFeature: Feature) => {
+    setTeams(teams.map(team => {
+      if (team.id === teamId) {
+        const updatedFeatures = team.features.map(feature => 
+          feature.id === editedFeature.id ? editedFeature : feature
+        ).sort((a, b) => a.priority - b.priority)
+        .map((feature, index) => ({
+          ...feature,
+          priority: index + 1
+        }));
+        return {
+          ...team,
+          features: updatedFeatures
+        };
+      }
+      return team;
+    }));
+  };
+
+  const handleRemoveFeature = (teamId: string, featureId: string) => {
+    setTeams(teams.map(team => {
+      if (team.id === teamId) {
+        const updatedFeatures = team.features
+          .filter(feature => feature.id !== featureId)
+          .map((feature, index) => ({
+            ...feature,
+            priority: index + 1
+          }));
+        return {
+          ...team,
+          features: updatedFeatures
+        };
+      }
+      return team;
+    }));
+  };
+
+const handleLoadDemoScenario = (teamId: string) => {
+  const numFeatures = Math.floor(Math.random() * 5) + 3; // 3 to 7 features
+  const newFeatures: Feature[] = [];
+
+  for (let i = 0; i < numFeatures; i++) {
+    newFeatures.push({
+      id: `demo-${teamId}-${Date.now()}-${i}`,
+      name: `Feature ${i + 1}`,
+      size: Math.floor(Math.random() * 20) + 5, // 5 to 24 size
+      priority: i + 1,
+      teamId: teamId,
+      isBlocked: false
+    });
+  }
+
+  setTeams(teams.map(team => {
+    if (team.id === teamId) {
+      return {
+        ...team,
+        features: newFeatures
+      };
+    }
+    return team;
+  }));
+};
+
+const handleLoadDemoTeams = () => {
+  const numTeams = Math.floor(Math.random() * 4) + 2; // 2 to 5 teams
+  const teamNames = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'];
+  const newTeams: Team[] = [];
+
+  for (let i = 0; i < numTeams; i++) {
+    newTeams.push({
+      id: `demo-team-${Date.now()}-${i}`,
+      name: `Team ${teamNames[i]}`,
+      wipLimit: Math.floor(Math.random() * 3) + 2, // 2 to 4 WIP limit
+      pastThroughput: Array.from({ length: 10 }, () => Math.floor(Math.random() * 4)), // 0 to 3 throughput
+      features: []
+    });
+  }
+
+  setTeams(newTeams);
+};
 
   const handleSimulate = () => {
-    if (!dueDate || pastThroughput.length === 0 || features.length === 0) {
-      alert('Please ensure you have set a due date, entered past throughput data, and added at least one feature.');
+    setError(null);
+
+    if (!dueDate || teams.length === 0 || teams.some(team => team.features.length === 0)) {
+      setError('Please ensure you have set a due date, added at least one team, and each team has at least one feature.');
       return;
     }
 
-    const results = runSimulation(features, dueDate, pastThroughput, wipLimit);
-    setFeatures(results);
-  };
+    const selectedDueDate = new Date(dueDate);
+    const currentDate = new Date();
 
-  const loadDemoScenario = () => {
-    const twoMonthsFromNow = addMonths(new Date(), 2);
-    setDueDate(format(twoMonthsFromNow, 'yyyy-MM-dd'));
-    setPastThroughput([1, 5, 0, 2, 3, 0, 1, 1, 0, 2, 1, 0, 0, 4, 1, 1, 0, 1, 0, 2, 1, 0, 2, 0, 1, 2, 1, 0, 0, 3]);
-    setFeatures([
-      { id: '1', name: 'A', size: 30, priority: 1 },
-      { id: '2', name: 'B', size: 15, priority: 2 },
-      { id: '3', name: 'C', size: 40, priority: 3 },
-      { id: '4', name: 'D', size: 20, priority: 4 },
-    ]);
-    setWipLimit(2);
-  };
+    if (selectedDueDate <= currentDate) {
+      setError('The due date must be in the future. Please select a future date.');
+      return;
+    }
 
-  const clearScenario = () => {
-    setDueDate('');
-    setPastThroughput([]);
-    setFeatures([]);
-    setWipLimit(1);
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    try {
+      const results = runSimulation(teams, dueDate);
+      setTeams(results);
+      setSimulationRun(true);
+    } catch (err) {
+      console.error('Simulation error:', err);
+      setError(`An error occurred during simulation: ${(err as Error).message}`);
     }
   };
 
-  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        const lines = text.split('\n');
-        // const headers = lines[0].split(',');
-        const newFeatures: Feature[] = lines.slice(1).map((line, index) => {
-          const values = line.split(',');
-          return {
-            id: Date.now().toString() + index,
-            name: values[0],
-            size: parseInt(values[1]),
-            priority: features.length + index + 1
-          };
-        }).filter(feature => feature.name && !isNaN(feature.size));
-        
-        setFeatures(prevFeatures => {
-          const updatedFeatures = [...prevFeatures, ...newFeatures];
-          return updatedFeatures.sort((a, b) => a.priority - b.priority);
-        });
-      };
-      reader.readAsText(file);
-    }
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const handleCSVDataLoaded = (loadedTeams: Team[], loadedFeatures: Feature[]) => {
+    setTeams(loadedTeams.map(team => ({
+      ...team,
+      features: loadedFeatures.filter(feature => feature.teamId === team.id)
+    })));
+    setError(null);
   };
+
+  const isSimulationDisabled = teams.length === 0 || teams.some(team => team.features.length === 0) || !dueDate;
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Monte Carlo Simulation with WIP</h1>
-      <div className="mb-4">
-        <button
-          onClick={loadDemoScenario}
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
-        >
-          Load Demo Scenario
-        </button>
-        <button
-          onClick={clearScenario}
-          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-2"
-        >
-          Clear Scenario
-        </button>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={handleCSVUpload}
-          ref={fileInputRef}
-          className="hidden"
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2"
-        >
-          Upload CSV
-        </button>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Monte Carlo Simulation with Multiple Teams</h1>
+        <div className="flex items-center space-x-4">
+          <CSVTemplate />
+          <button
+            onClick={() => setIsHelpModalOpen(true)}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
+          >
+            <HelpCircle className="mr-2" />
+            Help
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-4 mb-4">
+        <div>
+          <label className="mr-2">Project Due Date:</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="border p-2"
+          />
+        </div>
         <button
           onClick={handleSimulate}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded  mt-4"
+          className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center ${isSimulationDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isSimulationDisabled}
         >
-          Run Simulation
-        </button>        
+          <PlayCircle className="mr-2" />
+          Run Simulation for All Teams
+        </button>
       </div>
-      <SimulationForm
-        dueDate={dueDate}
-        setDueDate={setDueDate}
-        pastThroughput={pastThroughput}
-        setPastThroughput={setPastThroughput}
-        wipLimit={wipLimit}
-        setWipLimit={setWipLimit}
-        addFeature={handleAddFeature}
-        features={features}
+
+      {error && (
+        <div className="text-red-500 mt-2 mb-4">
+          {error}
+        </div>
+      )}
+
+      <TeamManager
+        teams={teams}
+        onAddTeam={handleAddTeam}
+        onUpdateTeam={handleUpdateTeam}
+        onRemoveTeam={handleRemoveTeam}
+        onLoadDemoTeams={handleLoadDemoTeams}
+        onCSVDataLoaded={handleCSVDataLoaded}
       />
-      <FeatureTable 
-        features={features} 
-        onEditFeature={handleEditFeature}
-        onRemoveFeature={handleRemoveFeature}
-      />
-      <button
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
-        onClick={handleSimulate}
-      >
-        Run Simulation
-      </button>
+
+      {teams.length > 0 && (
+        <TeamTabs
+          teams={teams}
+          onAddFeature={handleAddFeature}
+          onEditFeature={handleEditFeature}
+          onRemoveFeature={handleRemoveFeature}
+          onLoadDemoScenario={handleLoadDemoScenario}
+        />
+      )}
+
+      {simulationRun && <SimulationResultsSummary teams={teams} />}
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
 }
