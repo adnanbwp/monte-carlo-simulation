@@ -56,56 +56,82 @@ export function runSimulation(teams: Team[], dueDateString: string): Team[] {
         }
 
         // Complete features that are done
-        inProgressFeatures[team.id] = inProgressFeatures[team.id].filter(item => {
-          if (item.remainingWork <= 0) {
-            completedFeatures.push(item.feature);
-            if (!simulationResults[item.feature.id]) {
-              simulationResults[item.feature.id] = [];
-            }
-            // Create a new Date object to avoid the loop-func issue
-            const completionDate = new Date(currentDate);
-            simulationResults[item.feature.id].push(completionDate);
-            return false;
+        const { updatedInProgress, newlyCompleted } = processCompletedFeatures(inProgressFeatures[team.id]);
+        inProgressFeatures[team.id] = updatedInProgress;
+        completedFeatures.push(...newlyCompleted);
+        newlyCompleted.forEach(feature => {
+          if (!simulationResults[feature.id]) {
+            simulationResults[feature.id] = [];
           }
-          return true;
+          simulationResults[feature.id].push(new Date());
         });
 
         // Update blocked features
-        team.features.forEach(feature => {
-          if (isFeatureBlocked(feature, completedFeatures)) {
-            blockedFeatures.add(feature.id);
-          } else {
-            blockedFeatures.delete(feature.id);
-          }
-        });
+        updateBlockedFeatures(team.features, completedFeatures, blockedFeatures);
 
         // Add new features if there's capacity
-        while (inProgressFeatures[team.id].length < team.wipLimit) {
-          const availableFeatures = getAvailableFeatures(team, completedFeatures, blockedFeatures)
-            .filter(f => !inProgressFeatures[team.id].some(item => item.feature.id === f.id));
-          if (availableFeatures.length === 0) break;
-          inProgressFeatures[team.id].push({
-            feature: availableFeatures[0],
-            remainingWork: availableFeatures[0].size
-          });
-        }
+        addNewFeatures(team, completedFeatures, blockedFeatures, inProgressFeatures);
 
         // Allocate daily throughput
-        const dailyThroughput = getRandomThroughput(team.pastThroughput);
-        let remainingThroughput = dailyThroughput;
-
-        for (const item of inProgressFeatures[team.id]) {
-          const work = Math.min(item.remainingWork, remainingThroughput);
-          item.remainingWork -= work;
-          remainingThroughput -= work;
-          if (remainingThroughput <= 0) break;
-        }
+        allocateDailyThroughput(team, inProgressFeatures[team.id]);
       }
       currentDate = addDays(currentDate, 1);
     }
   }
 
-  // Calculate probabilities and expected dates
+  return calculateResults(teams, simulationResults);
+}
+
+function processCompletedFeatures(inProgressFeatures: { feature: Feature, remainingWork: number }[]): 
+  { updatedInProgress: typeof inProgressFeatures, newlyCompleted: Feature[] } {
+  const updatedInProgress = [];
+  const newlyCompleted = [];
+  for (const item of inProgressFeatures) {
+    if (item.remainingWork <= 0) {
+      newlyCompleted.push(item.feature);
+    } else {
+      updatedInProgress.push(item);
+    }
+  }
+  return { updatedInProgress, newlyCompleted };
+}
+
+function updateBlockedFeatures(features: Feature[], completedFeatures: Feature[], blockedFeatures: Set<string>): void {
+  features.forEach(feature => {
+    if (isFeatureBlocked(feature, completedFeatures)) {
+      blockedFeatures.add(feature.id);
+    } else {
+      blockedFeatures.delete(feature.id);
+    }
+  });
+}
+
+function addNewFeatures(team: Team, completedFeatures: Feature[], blockedFeatures: Set<string>, 
+  inProgressFeatures: { [teamId: string]: { feature: Feature, remainingWork: number }[] }): void {
+  while (inProgressFeatures[team.id].length < team.wipLimit) {
+    const availableFeatures = getAvailableFeatures(team, completedFeatures, blockedFeatures)
+      .filter(f => !inProgressFeatures[team.id].some(item => item.feature.id === f.id));
+    if (availableFeatures.length === 0) break;
+    inProgressFeatures[team.id].push({
+      feature: availableFeatures[0],
+      remainingWork: availableFeatures[0].size
+    });
+  }
+}
+
+function allocateDailyThroughput(team: Team, teamInProgress: { feature: Feature, remainingWork: number }[]): void {
+  const dailyThroughput = getRandomThroughput(team.pastThroughput);
+  let remainingThroughput = dailyThroughput;
+
+  for (const item of teamInProgress) {
+    const work = Math.min(item.remainingWork, remainingThroughput);
+    item.remainingWork -= work;
+    remainingThroughput -= work;
+    if (remainingThroughput <= 0) break;
+  }
+}
+
+function calculateResults(teams: Team[], simulationResults: { [featureId: string]: Date[] }): Team[] {
   return teams.map(team => ({
     ...team,
     features: team.features.map(feature => {
