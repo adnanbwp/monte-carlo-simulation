@@ -1,104 +1,127 @@
-import { addDays, isBefore, isEqual } from 'date-fns';
+import { addDays, isBefore, isEqual, parseISO } from 'date-fns';
+import { Team, Feature } from '../types';
 
-interface Feature {
-  id: string;
-  name: string;
-  size: number;
-  priority: number;
-  probability?: number;
-  expectedDate?: string;
+const SIMULATION_RUNS = 10000;
+
+function getRandomThroughput(pastThroughput: number[]): number {
+  if (pastThroughput.length === 0) {
+    console.warn('Past throughput is empty. Using default value of 1.');
+    return 1;
+  }
+  return pastThroughput[Math.floor(Math.random() * pastThroughput.length)];
 }
 
-interface SimulationResult {
-  completed: boolean;
-  completionDate: Date | null;
+function isFeatureBlocked(feature: Feature, completedFeatures: Feature[]): boolean {
+  if (!feature.dependencyId) return false;
+  return !completedFeatures.some(f => f.id === feature.dependencyId);
 }
 
-export const runSimulation = (features: Feature[], dueDate: string, pastThroughput: number[], wipLimit: number): Feature[] => {
-  const simulationRuns = 1000;
-  const startDate = new Date();
-  const dueDateObj = new Date(dueDate);
-  
-  const simulationResults: SimulationResult[][] = [];
+function getAvailableFeatures(team: Team, completedFeatures: Feature[], blockedFeatures: Set<string>): Feature[] {
+  return team.features
+    .filter(f => !isFeatureBlocked(f, completedFeatures) && !completedFeatures.includes(f))
+    .sort((a, b) => {
+      // Prioritize previously blocked features
+      if (blockedFeatures.has(a.id) && !blockedFeatures.has(b.id)) return -1;
+      if (!blockedFeatures.has(a.id) && blockedFeatures.has(b.id)) return 1;
+      // If both were blocked or both were not blocked, sort by original priority
+      return a.priority - b.priority;
+    })
+    .slice(0, team.wipLimit);
+}
 
-  for (let run = 0; run < simulationRuns; run++) {
-    let currentDate = new Date(startDate);
-    const runResults: SimulationResult[] = new Array(features.length).fill({ completed: false, completionDate: null });
-    const activeFeatures: { index: number; remainingSize: number }[] = [];
-    let nextFeatureIndex = 0;
-
-    while (isBefore(currentDate, dueDateObj) || isEqual(currentDate, dueDateObj)) {
-      // Start new day: add new features if possible
-      while (activeFeatures.length < wipLimit && nextFeatureIndex < features.length) {
-        activeFeatures.push({ index: nextFeatureIndex, remainingSize: features[nextFeatureIndex].size });
-        nextFeatureIndex++;
-      }
-
-      if (activeFeatures.length === 0) {
-        break;
-      } // No more work to do
-
-      const dailyThroughput = pastThroughput[Math.floor(Math.random() * pastThroughput.length)];
-      
-      // Distribute throughput
-      if (dailyThroughput % activeFeatures.length === 0) {
-        // Equal distribution
-        const throughputPerFeature = Math.floor(dailyThroughput / activeFeatures.length);
-        activeFeatures.forEach(feature => {
-          feature.remainingSize = Math.max(0, feature.remainingSize - throughputPerFeature);
-        });
-      } else {
-        // Prioritized distribution
-        let remainingThroughput = dailyThroughput;
-        activeFeatures.sort((a, b) => features[a.index].priority - features[b.index].priority);
-        for (let feature of activeFeatures) {
-          const work = Math.min(feature.remainingSize, remainingThroughput);
-          feature.remainingSize -= work;
-          remainingThroughput -= work;
-          if (remainingThroughput === 0) {
-            break;
-          }
-        }
-      }
-
-      // Check for completed features
-      for (let i = activeFeatures.length - 1; i >= 0; i--) {
-        if (activeFeatures[i].remainingSize === 0) {
-          runResults[activeFeatures[i].index] = { completed: true, completionDate: new Date(currentDate) };
-          activeFeatures.splice(i, 1);
-        }
-      }
-
-      currentDate = addDays(currentDate, 1);
-    }
-
-    // Mark uncompleted features
-    activeFeatures.forEach(feature => {
-      runResults[feature.index] = { completed: false, completionDate: null };
-    });
-
-    simulationResults.push(runResults);
+export function runSimulation(teams: Team[], dueDateString: string): Team[] {
+  if (teams.length === 0) {
+    throw new Error('No teams provided for simulation.');
   }
 
-  return features.map((feature, index) => {
-    const completions = simulationResults.filter(run => run[index].completed).length;
-    const probability = (completions / simulationRuns) * 100;
+  const dueDate = parseISO(dueDateString);
+  const startDate = new Date();
 
-    const completionDates = simulationResults
-      .map(run => run[index].completionDate)
-      .filter((date): date is Date => date !== null);
-    
-    let expectedDate = 'N/A';
-    if (completionDates.length > 0) {
-      completionDates.sort((a, b) => a.getTime() - b.getTime());
-      const percentileIndex = Math.ceil(0.85 * completionDates.length) - 1;
-      expectedDate = completionDates[percentileIndex].toISOString().split('T')[0];
+  if (isBefore(dueDate, startDate)) {
+    throw new Error('Due date must be in the future.');
+  }
+
+  const simulationResults: { [featureId: string]: Date[] } = {};
+
+  for (let run = 0; run < SIMULATION_RUNS; run++) {
+    let currentDate = new Date(startDate);
+    const completedFeatures: Feature[] = [];
+    const inProgressFeatures: { [teamId: string]: { feature: Feature, remainingWork: number }[] } = {};
+    const blockedFeatures: Set<string> = new Set();
+
+    while (isBefore(currentDate, dueDate) || isEqual(currentDate, dueDate)) {
+      for (const team of teams) {
+        if (!inProgressFeatures[team.id]) {
+          inProgressFeatures[team.id] = [];
+        }
+
+        // Complete features that are done
+        inProgressFeatures[team.id] = inProgressFeatures[team.id].filter(item => {
+          if (item.remainingWork <= 0) {
+            completedFeatures.push(item.feature);
+            if (!simulationResults[item.feature.id]) {
+              simulationResults[item.feature.id] = [];
+            }
+            simulationResults[item.feature.id].push(new Date(currentDate));
+            return false;
+          }
+          return true;
+        });
+
+        // Update blocked features
+        team.features.forEach(feature => {
+          if (isFeatureBlocked(feature, completedFeatures)) {
+            blockedFeatures.add(feature.id);
+          } else {
+            blockedFeatures.delete(feature.id);
+          }
+        });
+
+        // Add new features if there's capacity
+        while (inProgressFeatures[team.id].length < team.wipLimit) {
+          const availableFeatures = getAvailableFeatures(team, completedFeatures, blockedFeatures)
+            .filter(f => !inProgressFeatures[team.id].some(item => item.feature.id === f.id));
+          if (availableFeatures.length === 0) break;
+          inProgressFeatures[team.id].push({
+            feature: availableFeatures[0],
+            remainingWork: availableFeatures[0].size
+          });
+        }
+
+        // Allocate daily throughput
+        const dailyThroughput = getRandomThroughput(team.pastThroughput);
+        let remainingThroughput = dailyThroughput;
+
+        for (let item of inProgressFeatures[team.id]) {
+          const work = Math.min(item.remainingWork, remainingThroughput);
+          item.remainingWork -= work;
+          remainingThroughput -= work;
+          if (remainingThroughput <= 0) break;
+        }
+      }
+      currentDate = addDays(currentDate, 1);
     }
+  }
 
-    return {
-      ...feature,
-      probability,
-      expectedDate
-    };
-  });
-};
+  // Calculate probabilities and expected dates
+  return teams.map(team => ({
+    ...team,
+    features: team.features.map(feature => {
+      const completions = simulationResults[feature.id] || [];
+      const probability = (completions.length / SIMULATION_RUNS) * 100;
+
+      let expectedDate = 'N/A';
+      if (completions.length > 0) {
+        completions.sort((a, b) => a.getTime() - b.getTime());
+        const percentileIndex = Math.floor(0.85 * completions.length);
+        expectedDate = completions[percentileIndex].toISOString().split('T')[0];
+      }
+
+      return {
+        ...feature,
+        probability,
+        expectedDate,
+      };
+    }),
+  }));
+}
