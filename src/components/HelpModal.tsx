@@ -41,7 +41,13 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               className={`py-2 px-4 ${activeTab === 'csv' ? 'border-b-2 border-blue-500' : ''}`}
               onClick={() => setActiveTab('csv')}
             >
-              CSV Upload
+              CSV Guidelines
+            </button>
+            <button
+              className={`py-2 px-4 ${activeTab === 'simulation' ? 'border-b-2 border-blue-500' : ''}`}
+              onClick={() => setActiveTab('simulation')}
+            >
+              Simulation Logic
             </button>
           </div>
           <div className="mt-4">
@@ -73,30 +79,65 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             )}
             {activeTab === 'csv' && (
               <div>
-                <h3 className="font-bold">CSV Upload Feature</h3>
-                <p>The CSV upload feature allows you to quickly import team and feature data into the simulator.</p>
-                <h4 className="font-semibold mt-2">How to use:</h4>
+                <h3 className="font-bold">CSV Guidelines</h3>
+                <p>The CSV file should have two sections:</p>
                 <ol className="list-decimal list-inside">
-                  <li>Click the "Download CSV Template" link to get a template file</li>
-                  <li>Fill in your team and feature data in the template</li>
-                  <li>Click the "Load Data From CSV" button and select your filled CSV file</li>
-                  <li>The app will automatically load your data into the simulator</li>
+                  <li>Team Data:
+                    <ul className="list-disc list-inside ml-4">
+                      <li>Columns: Team Name, WIP Limit, Past Throughput</li>
+                      <li>Past Throughput should be comma-separated values within quotes</li>
+                    </ul>
+                  </li>
+                  <li>Feature Data:
+                    <ul className="list-disc list-inside ml-4">
+                      <li>Columns: Feature ID, Team, Name, Size</li>
+                      <li>Features should be listed in priority order (highest priority first)</li>
+                    </ul>
+                  </li>
                 </ol>
-                <h4 className="font-semibold mt-2">CSV Structure:</h4>
+                <p>Ensure there's a blank line between the team data and feature data sections.</p>
+              </div>
+            )}
+            {activeTab === 'simulation' && (
+              <div>
+                <h3 className="font-bold">Simulation Logic</h3>
+                <p>The Monte Carlo simulation for project management follows these steps:</p>
+                <ol className="list-decimal list-inside">
+                  <li>The simulation runs 10,000 times for each team and their features.</li>
+                  <li>For each simulation run:
+                    <ul className="list-disc list-inside ml-4">
+                      <li>Start from the project start date and progress day by day until the due date.</li>
+                      <li>For each day and each team:
+                        <ol className="list-alpha list-inside ml-4">
+                          <li>Complete any features that have finished their work.</li>
+                          <li>Update the status of blocked features based on completed dependencies.</li>
+                          <li>Add new features to the team's in-progress list if there's capacity (respecting WIP limits).</li>
+                          <li>Allocate the day's work:
+                            <ul className="list-disc list-inside ml-6">
+                              <li>Randomly select a daily throughput value from the team's past throughput data.</li>
+                              <li>Distribute this throughput across in-progress features, reducing their remaining work.</li>
+                            </ul>
+                          </li>
+                        </ol>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>After all runs, calculate for each feature:
+                    <ul className="list-disc list-inside ml-4">
+                      <li>Completion probability: The percentage of runs where the feature was completed.</li>
+                      <li>Expected completion date: The 85th percentile of completion dates across all runs.</li>
+                    </ul>
+                  </li>
+                </ol>
+                <p className="mt-4"><strong>Key aspects of the simulation:</strong></p>
                 <ul className="list-disc list-inside">
-                  <li>The CSV file should have two sections: Teams and Features</li>
-                  <li>Team section columns: Team Name, WIP Limit, Past Throughput</li>
-                  <li>Feature section columns: Feature ID, Team, Name, Size</li>
-                  <li>Leave an empty row between the Team and Feature sections</li>
+                  <li>Features are prioritized within each team.</li>
+                  <li>The simulation respects team WIP (Work in Progress) limits.</li>
+                  <li>It accounts for feature dependencies across teams.</li>
+                  <li>Daily throughput varies based on historical team performance.</li>
+                  <li>The 85th percentile is used for the expected completion date to provide a conservative estimate.</li>
                 </ul>
-                <h4 className="font-semibold mt-2">Important Notes:</h4>
-                <ul className="list-disc list-inside">
-                  <li>All fields are required</li>
-                  <li>Past Throughput should be comma-separated values (e.g., "3,4,2,5")</li>
-                  <li>Feature Size should be a numeric value</li>
-                  <li>The Team name in the Feature section must match a Team name from the Team section</li>
-                  <li>Uploading a CSV will overwrite any existing data in the simulator</li>
-                </ul>
+                <p className="mt-4">This simulation helps project managers understand the likelihood of completing features by the due date and identify potential bottlenecks or risks in the project schedule.</p>
               </div>
             )}
           </div>
