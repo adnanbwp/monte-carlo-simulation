@@ -1,5 +1,5 @@
 import React from 'react';
-import { Team, Feature } from '../types';
+import { Team } from '../types';  // Remove 'Feature' if it's not used
 import FeatureCompletionList from './FeatureCompletionList';
 
 interface SimulationResultsSummaryProps {

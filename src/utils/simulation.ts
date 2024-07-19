@@ -62,7 +62,9 @@ export function runSimulation(teams: Team[], dueDateString: string): Team[] {
             if (!simulationResults[item.feature.id]) {
               simulationResults[item.feature.id] = [];
             }
-            simulationResults[item.feature.id].push(new Date(currentDate));
+            // Create a new Date object to avoid the loop-func issue
+            const completionDate = new Date(currentDate);
+            simulationResults[item.feature.id].push(completionDate);
             return false;
           }
           return true;
@@ -92,7 +94,7 @@ export function runSimulation(teams: Team[], dueDateString: string): Team[] {
         const dailyThroughput = getRandomThroughput(team.pastThroughput);
         let remainingThroughput = dailyThroughput;
 
-        for (let item of inProgressFeatures[team.id]) {
+        for (const item of inProgressFeatures[team.id]) {
           const work = Math.min(item.remainingWork, remainingThroughput);
           item.remainingWork -= work;
           remainingThroughput -= work;
