@@ -192,7 +192,7 @@ const handleLoadDemoTeams = () => {
           disabled={isSimulationDisabled}
         >
           <PlayCircle className="mr-2" />
-          Run Simulation for All Teams
+          Run Simulation
         </button>
       </div>
 
