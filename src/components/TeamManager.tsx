@@ -55,7 +55,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
 
   return (
     <div className="mb-4">
-      <h2 className="text-xl font-bold mb-2">Team Management</h2>
+      <h2 className="text-xl font-bold mb-2">Team and Feature Data</h2>
       <div className="flex flex-wrap items-end gap-2 mb-4">
         <input
           type="text"

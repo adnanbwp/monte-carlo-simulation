@@ -72,7 +72,8 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                 <h3 className="font-bold">Key Concepts</h3>
                 <ul className="list-disc list-inside">
                   <li><strong>WIP Limit:</strong> The maximum number of features a team can work on simultaneously</li>
-                  <li><strong>Throughput:</strong> The number of story points completed in a given time period</li>
+                  <li><strong>Throughput:</strong> The number of work items completed in a given time period. Typically work items completed per day for the past 'N' days. You may also use story points, if you want as long as you use story points for size</li>
+                  <li><strong>Size:</strong> This refers to the size of a feature. Use the same unit as Throughput i.e. work items or story points</li>
                   <li><strong>Monte Carlo Simulation:</strong> A probability simulation run multiple times to predict outcomes</li>
                 </ul>
               </div>
