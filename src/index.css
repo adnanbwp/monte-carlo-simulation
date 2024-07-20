@@ -27,4 +27,38 @@
   @apply opacity-50 cursor-not-allowed;
 }
 
-/* Add any additional custom styles here */
+/* New styles for export functionality */
+.export-button {
+  @apply bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center transition duration-300 ease-in-out;
+}
+
+.export-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.export-button-with-loader {
+  @apply flex items-center justify-center;
+}
+
+.export-message {
+  @apply mt-2 p-2 rounded text-sm;
+}
+
+.export-message-success {
+  @apply bg-green-100 text-green-700;
+}
+
+.export-message-error {
+  @apply bg-red-100 text-red-700;
+}
+
+/* Loading indicator animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-indicator {
+  @apply animate-spin inline-block;
+}

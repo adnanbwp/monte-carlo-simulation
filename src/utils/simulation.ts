@@ -20,10 +20,8 @@ function getAvailableFeatures(team: Team, completedFeatures: Feature[], blockedF
   return team.features
     .filter(f => !isFeatureBlocked(f, completedFeatures) && !completedFeatures.includes(f))
     .sort((a, b) => {
-      // Prioritize previously blocked features
       if (blockedFeatures.has(a.id) && !blockedFeatures.has(b.id)) return -1;
       if (!blockedFeatures.has(a.id) && blockedFeatures.has(b.id)) return 1;
-      // If both were blocked or both were not blocked, sort by original priority
       return a.priority - b.priority;
     })
     .slice(0, team.wipLimit);
@@ -55,7 +53,6 @@ export function runSimulation(teams: Team[], dueDateString: string): Team[] {
           inProgressFeatures[team.id] = [];
         }
 
-        // Complete features that are done
         const { updatedInProgress, newlyCompleted } = processCompletedFeatures(inProgressFeatures[team.id]);
         inProgressFeatures[team.id] = updatedInProgress;
         completedFeatures.push(...newlyCompleted);
@@ -63,16 +60,13 @@ export function runSimulation(teams: Team[], dueDateString: string): Team[] {
           if (!simulationResults[feature.id]) {
             simulationResults[feature.id] = [];
           }
-          simulationResults[feature.id].push(new Date());
+          simulationResults[feature.id].push(new Date(currentDate));
         });
 
-        // Update blocked features
         updateBlockedFeatures(team.features, completedFeatures, blockedFeatures);
 
-        // Add new features if there's capacity
         addNewFeatures(team, completedFeatures, blockedFeatures, inProgressFeatures);
 
-        // Allocate daily throughput
         allocateDailyThroughput(team, inProgressFeatures[team.id]);
       }
       currentDate = addDays(currentDate, 1);

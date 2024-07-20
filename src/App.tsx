@@ -11,9 +11,10 @@ import { HelpCircle, PlayCircle } from 'lucide-react';
 function App() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [dueDate, setDueDate] = useState<string>('');
-  const [simulationRun, setSimulationRun] = useState(false);
+  const [isSimulationRun, setIsSimulationRun] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [simulationCounter, setSimulationCounter] = useState(0);
 
   const handleAddTeam = (newTeam: Team) => {
     setTeams([...teams, newTeam]);
@@ -141,12 +142,15 @@ const handleLoadDemoTeams = () => {
     }
 
     try {
-      const results = runSimulation(teams, dueDate);
-      setTeams(results);
-      setSimulationRun(true);
+      const simulatedTeams = runSimulation(teams, dueDate);
+      setTeams(simulatedTeams);
+      setIsSimulationRun(true);
+      setSimulationCounter(prev => prev + 1); // Increment the simulation counter
+      console.log('Simulation results:', JSON.parse(JSON.stringify(simulatedTeams)));
     } catch (err) {
       console.error('Simulation error:', err);
       setError(`An error occurred during simulation: ${(err as Error).message}`);
+      setIsSimulationRun(false);
     }
   };
 
@@ -156,6 +160,7 @@ const handleLoadDemoTeams = () => {
       features: loadedFeatures.filter(feature => feature.teamId === team.id)
     })));
     setError(null);
+    setIsSimulationRun(false);  // Reset simulation run state when new data is loaded
   };
 
   const isSimulationDisabled = teams.length === 0 || teams.some(team => team.features.length === 0) || !dueDate;
@@ -221,7 +226,13 @@ const handleLoadDemoTeams = () => {
         />
       )}
 
-      {simulationRun && <SimulationResultsSummary teams={teams} />}
+      {isSimulationRun && (
+        <SimulationResultsSummary 
+          teams={teams} 
+          isSimulationRun={isSimulationRun} 
+          simulationCounter={simulationCounter}
+        />
+      )}
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
