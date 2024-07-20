@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/monte-carlo-simulation/static/css/main.d7d1449b.css",
-    "main.js": "/monte-carlo-simulation/static/js/main.22fb4da7.js",
+    "main.css": "/monte-carlo-simulation/static/css/main.6c15db9d.css",
+    "main.js": "/monte-carlo-simulation/static/js/main.0fbf11da.js",
     "static/js/453.786c6ca1.chunk.js": "/monte-carlo-simulation/static/js/453.786c6ca1.chunk.js",
     "index.html": "/monte-carlo-simulation/index.html",
-    "main.d7d1449b.css.map": "/monte-carlo-simulation/static/css/main.d7d1449b.css.map",
-    "main.22fb4da7.js.map": "/monte-carlo-simulation/static/js/main.22fb4da7.js.map",
+    "main.6c15db9d.css.map": "/monte-carlo-simulation/static/css/main.6c15db9d.css.map",
+    "main.0fbf11da.js.map": "/monte-carlo-simulation/static/js/main.0fbf11da.js.map",
     "453.786c6ca1.chunk.js.map": "/monte-carlo-simulation/static/js/453.786c6ca1.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d7d1449b.css",
-    "static/js/main.22fb4da7.js"
+    "static/css/main.6c15db9d.css",
+    "static/js/main.0fbf11da.js"
   ]
 }
